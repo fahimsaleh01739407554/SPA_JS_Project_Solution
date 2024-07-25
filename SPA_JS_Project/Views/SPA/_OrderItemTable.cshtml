@@ -1,0 +1,42 @@
+﻿@model IEnumerable<OrderItem>
+
+<table class="table table-bordered" id="orderitemTable">
+    <thead>
+        <tr>
+            <th></th>
+            <th>
+                Product Name
+            </th>
+            <th>
+                Price
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Quantity)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr id="@($"orderitem_tr_{@item.OrderID}_{@item.ProductID}")">
+                <td>
+                    <img src="/Pictures/@item.Product?.Picture" class="rounded-circle" style="width:40px" />
+                </td>
+                <td>
+                    @item.Product?.ProductName
+                </td>
+                <td>
+                    @item.Product?.Price
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Quantity)
+                </td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-sm rounded-circle edit" data-db-type="orderitem" data-db-action="edit" data-order-id="@item.OrderID" data-product-id="@item.ProductID" data-controller-action="EditOrderItem"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="btn btn-danger btn-sm rounded-circle del" data-db-type="orderitem" data-db-action="delete" data-order-id="@item.OrderID" data-product-id="@item.ProductID" data-controller-action="DeleteOrderItem"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

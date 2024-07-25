@@ -1,0 +1,654 @@
+﻿@model DataViewModel
+@{
+    ViewData["Title"] = "Index";
+}
+<div class="row m-1">
+    <div class="col-6 border-end">
+        <h3>Customers</h3>
+        <div class="d-flex justify-content-end mb-1">
+            <button class="btn btn-primary btn-sm" id="addcust"><span class="bi bi-plus"></span> Add</button>
+        </div>
+        @await Html.PartialAsync("_CustomerTable", Model.Customers)
+    </div>
+    <div class="col-6">
+        <h3>Products</h3>
+        <div class="d-flex justify-content-end mb-1">
+            <button class="btn btn-primary btn-sm" id="addprod"><span class="bi bi-plus"></span> Add</button>
+        </div>
+        @await Html.PartialAsync("_ProductTable", Model.Products)
+    </div>
+</div>
+<div class="row">
+    <div class="col-6">
+        <h3>Orders</h3>
+        <div class="d-flex justify-content-end mb-1">
+            <button class="btn btn-primary btn-sm" id="addord"><span class="bi bi-plus"></span> Add</button>
+        </div>
+        @await Html.PartialAsync("_OrderTable", Model.Orders, new ViewDataDictionary(this.ViewData) { { "id", Model.SelectedOrderId } })
+    </div>
+    <div class="col-6">
+        <h3>Order Items</h3>
+        <div class="d-flex justify-content-end mb-1">
+            <button class="btn btn-primary btn-sm" id="addoi"><span class="bi bi-plus"></span> Add</button>
+        </div>
+        <div id="oidiv">
+            @await Html.PartialAsync("_OrderItemTable", Model.OrderItems)
+        </div>
+    </div>
+</div>
+@*<div>
+    @await Html.PartialAsync("_CreateOrder",  null, new ViewDataDictionary(this.ViewData){{"Products", Model.Products}, {"Customers", Model.Customers}})
+</div>*@
+<!--Modal-->
+<div class="modal" tabindex="-1" id="modal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="mtitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="mbody">
+                <p>Modal body text goes here.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="save" class="btn btn-primary" form="f">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal" tabindex="-1" id="delModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title">Confirm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure to delete this item?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="deleteItem">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!--Toast-->
+<div class="position-absolute bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="toastNotice" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto" id="toasthead">Bootstrap</strong>
+
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastbody">
+            Hello, world! This is a toast message.
+        </div>
+    </div>
+</div>
+@section styles
+    {
+    <link rel="stylesheet" href="~/libs/picker/css/bootstrap-datepicker.standalone.css" />
+}
+    @section scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+    <script src="~/libs/picker/js/bootstrap-datepicker.js"></script>
+    <script>
+        var myModal = new bootstrap.Modal(document.getElementById('modal'));
+        var delModal = new bootstrap.Modal(document.getElementById('delModal'));
+        var myAlert = document.getElementById('toastNotice');//select id of toast
+        var bsAlert = new bootstrap.Toast(myAlert);//inizialize it
+        var itemToWorkWith;
+        $(() => {
+            $(".date").datepicker();
+            //Order select start
+
+            $(document).on("click", "button.select", function () {
+
+
+                var orderId = $(this).data("order-id");
+                console.log(orderId)
+                var previousSelected = $("tr.bg-info")
+                previousSelected.removeClass("bg-info");
+                previousSelected.find("button.btn").removeClass("disabled");
+                //$(this).parent().parent().addClass("bg-info");
+                $(this).closest("tr").addClass("bg-info");
+                $(this).closest("tr").find("button.btn").addClass("disabled");
+                $.ajax({
+                    type: "POST",
+                    url: "/SPA/GetSelectedOrderItems/" + orderId,
+                    success: r => {
+                        $("#oidiv").html(r);
+                    }
+                })
+            });
+            //Order select end
+            //Delete item start
+            $(document).on('click', 'button.del', function () {
+                itemToWorkWith = $(this);
+                delModal.show();
+                //console.log(`${dbType} ${dbAction} ${controllerAction}`);
+                //console.log(id);
+
+            });
+            $('#deleteItem').click(() => {
+                delModal.hide();
+                var dbType = itemToWorkWith.data("db-type");
+                var dbAction = itemToWorkWith.data("db-action");
+                var controllerAction = itemToWorkWith.data("controller-action");
+                var id = itemToWorkWith.data(`${dbType}-id`);
+                console.log(`${dbType} ${dbAction} ${controllerAction}`);
+                console.log(id);
+                console.log($(`#${dbType}_tr_${id}`))
+                $(`#${dbType}_tr_${id}`).remove();
+                if(dbType == 'orderitem'){
+                    var oid = itemToWorkWith.data("order-id");
+                    var pid = itemToWorkWith.data("product-id");
+                    $.ajax({
+                        type: 'POST',
+                        url: `/SPA/${controllerAction}/?oid=${oid}&pid=${pid}`,
+                        //data:{oid:oid, pid:pid},
+                        success: r => {
+                            if (r.success == true) {
+                                $("#toasthead").html("Success");
+                                $("#toastbody").html(r.message);
+
+                                bsAlert.show();
+                                $(`#${dbType}_tr_${oid}_${pid}`).remove();
+                            }
+                            else {
+                                $("#toasthead").html("Failed");
+                                $("#toastbody").html(r.message);
+
+                                bsAlert.show();
+                            }
+                        }
+                    });
+                }
+                else
+                {
+                    $.ajax({
+                        type: 'POST',
+                        url: `/SPA/${controllerAction}/{id}`,
+                        success: r => {
+                            if (r.success == true) {
+                                $("#toasthead").html("Success");
+                                $("#toastbody").html(r.message);
+
+                                bsAlert.show();
+                                $(`#${dbType}_tr_${id}`).remove();
+                            }
+                            else {
+                                $("#toasthead").html("Failed");
+                                $("#toastbody").html(r.message);
+
+                                bsAlert.show();
+                            }
+                        }
+                    });
+                }
+            });
+            //Delete item end
+            //Edit action start
+            $(document).on('click', 'button.edit', function () {
+                var dbType = $(this).data("db-type");
+                var dbAction = $(this).data("db-action");
+                var controllerAction = $(this).data("controller-action");
+                var id = $(this).data(`${dbType}-id`);
+                console.log(`${dbType} ${dbAction} ${controllerAction}`);
+                if (dbType == 'orderitem') {
+                    var oid = $(this).data("order-id");
+                    var pid = $(this).data("product-id");
+                    $.ajax({
+                        type: "GET",
+                        url: `/SPA/${controllerAction}/?oid=${oid}&pid=${pid}`,
+                        success: r => {
+                            $("#mbody").html(r);
+                            $("#mtitle").html(`Edit ${dbType}`);
+
+                            myModal.show();
+                            var f = $("#f");
+                            //console.log(f);
+                            //f.removeData('validator');
+                            // f.removeData('unobtrusiveValidation');
+                            $.validator.unobtrusive.parse(f);
+                            if (dbType == 'order') {
+                                $(".date").datepicker();
+                            }
+                        }
+                    });
+                }
+                else {
+                    $.ajax({
+                        type: "GET",
+                        url: `/SPA/${controllerAction}/${id}`,
+                        success: r => {
+                            $("#mbody").html(r);
+                            $("#mtitle").html(`Edit ${dbType}`);
+
+                            myModal.show();
+                            var f = $("#f");
+                            //console.log(f);
+                            //f.removeData('validator');
+                            // f.removeData('unobtrusiveValidation');
+                            $.validator.unobtrusive.parse(f);
+                            if (dbType == 'order') {
+                                $(".date").datepicker();
+                            }
+                        }
+
+                    });
+                }
+                //console.log(id);
+            });
+
+            //Edit action end
+            //delete order item on insert start
+            $(document).on("click", "button.deloi-insert", function () {
+                if ($("button.deloi-insert").length < 2) return;
+                $(this).parent().parent().remove();
+            })
+            //delete order item on insert end
+            //Add Customer start
+            $("#addcust").click(() => {
+                $.ajax({
+                    type: "GET",
+                    url: "@Url.Action("CreateCustomer", "SPA")",
+                    success: r => {
+                        $("#mbody").html(r);
+                        $("#mtitle").html("Add Customer");
+
+                        myModal.show();
+                        var f = $("#f");
+                        console.log(f);
+                        //f.removeData('validator');
+                        // f.removeData('unobtrusiveValidation');
+                        $.validator.unobtrusive.parse(f);
+                    }
+
+                });
+            });
+            //Add Customer end
+            //Add Order item start
+            $("#addoi").click(function () {
+                var id = $('button.select.disabled').data("order-id")
+                $.ajax({
+                    type: "GET",
+                    url: "/SPA/CreateOrderItem/" + id,
+                    success: r => {
+                        $("#mbody").html(r);
+                        $("#mtitle").html("Add Order Item");
+
+                        myModal.show();
+                        var f = $("#f");
+                        console.log(f);
+                        //f.removeData('validator');
+                        // f.removeData('unobtrusiveValidation');
+                        $.validator.unobtrusive.parse(f);
+                    }
+
+                });
+            })
+            //Add Order item end
+            //Add product start
+            $("#addprod").click(() => {
+                $.ajax({
+                    type: "GET",
+                    url: "@Url.Action("CreateProduct", "SPA")",
+                    success: r => {
+                        $("#mbody").html(r);
+                        $("#mtitle").html("Add Product");
+
+                        myModal.show();
+                        var f = $("#f");
+                        console.log(f);
+                        //f.removeData('validator');
+                        // f.removeData('unobtrusiveValidation');
+                        $.validator.unobtrusive.parse(f);
+                    }
+                });
+
+
+                //toast.show();
+            });
+            //Add product end
+            //Add order start
+            $("#addord").click(() => {
+                $.ajax({
+                    type: "GET",
+                    url: "@Url.Action("CreateOrder", "SPA")",
+                    success: r => {
+                        $("#mbody").html(r);
+                        $("#mtitle").html("Add Order");
+
+                        myModal.show();
+                        var f = $("#f");
+                        console.log(f);
+                        //f.removeData('validator');
+                        // f.removeData('unobtrusiveValidation');
+                        $.validator.unobtrusive.parse(f);
+                        $(".date").datepicker();
+                    }
+
+                });
+            });
+            //Add order end
+            //Save click start
+            $("#save").click(function () {
+                var button = $(this);
+                var isValid = $("#f").valid();
+
+                //console.log(isValid);
+                if (isValid == true) {
+                    var dbType = $("#f").data("db-type");
+                    var dbAction = $("#f").data("db-action");
+                    var controllerAction = $("#f").data("controller-action");
+                    console.log(`${dbType} ${dbAction} ${controllerAction}`);
+                    var data = createData(dbType, dbAction);
+                    if (dbType == 'order' && dbAction == 'edit') {
+                        $.each($('select.added'), (i, v) => {
+                            if ($(v).val() == '') return;
+                        });
+                        $.each($('input.added'), (i, v) => {
+                            if ($(v).val() == '') return;
+                        });
+                    }
+                    //console.log(data);
+                    if (dbType == "customer") {
+
+                        $.ajax({
+                            url: `/SPA/${controllerAction}`,
+                            type: "POST",
+                            data: data,
+                            dataType: "json",
+                            success: r => {
+                                if (dbAction == "insert") {
+                                    $("#toasthead").html("Success");
+                                    $("#toastbody").html("Data inserted successfully");
+                                    myModal.hide();
+                                    bsAlert.show();
+                                    addToTable(dbType, r);
+
+                                    //replaceRow(dbType, `customer_tr_${r.customerID}`, dbAction);
+
+                                }
+                                if (dbAction == "edit") {
+                                    $("#toasthead").html("Success");
+                                    $("#toastbody").html("Data saved successfully");
+                                    myModal.hide();
+                                    bsAlert.show();
+                                    replaceRow(dbType, `customer_tr_${r.customerID}`, r);
+
+                                }
+
+                            },
+                            error: function (err) {
+                                alert(err.statusText);
+                                $("#toasthead").html("Failed");
+                                $("#toastbody").html("Failed to insert data");
+
+                                bsAlert.show();
+                            }
+                        });
+                    }
+                    if (dbType == "product") {
+                        $.ajax({
+                            url: `/SPA/${controllerAction}`,
+                            type: "POST",
+                            contentType: false, // Not to set any content header
+                            processData: false, // Not to process data
+                            data: data,
+                            success: function (result) {
+                                console.log(result);
+                                if (dbAction == "insert") {
+                                    $("#toastheader").html("Success");
+                                    $("#toastbody").html("Data inserted successfully");
+                                    bsAlert.show();
+                                    if (dbAction == 'insert') addToTable(dbType, result);
+
+                                }
+                                if (dbAction == "edit") {
+                                    $("#toasthead").html("Success");
+                                    $("#toastbody").html("Data saved successfully");
+                                    myModal.hide();
+                                    bsAlert.show();
+                                    replaceRow(dbType, `product_tr_${result.productID}`, result);
+
+                                }
+                                myModal.hide();
+                            },
+                            error: function (err) {
+                                alert(err.statusText);
+                                $("#toasthead").html("Failed");
+                                $("#toastbody").html("Failed to insert data");
+                                bsAlert.show();
+                            }
+                        });
+                    }
+                    if (dbType == "order") {
+                        var isValid = $("#f").valid();
+                        console.log(isValid)
+                        if (isValid == true) {
+                            var dbType = $("#f").data("db-type");
+                            var dbAction = $("#f").data("db-action");
+                            var controllerAction = $("#f").data("controller-action");
+                            //console.log(`${dbType} ${dbAction} ${controllerAction}`);
+                            var data = $("#f").serialize();
+
+                            $.ajax({
+                                type: "POST",
+                                url: `/SPA/${controllerAction}`,
+                                data: data,
+                                success: r => {
+                                    console.log(r);
+                                    $("#toasthead").html("Success");
+                                    $("#toastbody").html("Data inserted successfully");
+                                    myModal.hide();
+                                    bsAlert.show();
+                                    if (dbAction == 'insert') addToTable(dbType, r);
+                                    if (dbAction == "edit") {
+                                        $("#toasthead").html("Success");
+                                        $("#toastbody").html("Data saved successfully");
+                                        myModal.hide();
+                                        bsAlert.show();
+                                        replaceRow(dbType, `order_tr_${r.orderID}`, r);
+
+                                    }
+
+                                }
+                            });
+
+
+
+                        }
+                    }
+                    if (dbType = "orderitem") {
+                        var isValid = $("#f").valid();
+                        console.log(isValid)
+                        if (isValid == true) {
+                            var dbType = $("#f").data("db-type");
+                            var dbAction = $("#f").data("db-action");
+                            var controllerAction = $("#f").data("controller-action");
+                            //console.log(`${dbType} ${dbAction} ${controllerAction}`);
+                            var data = $("#f").serialize();
+                            $.ajax({
+                                type: "POST",
+                                url: `/SPA/${controllerAction}`,
+                                data: data,
+                                success: r => {
+                                    console.log(r);
+                                    $("#toasthead").html("Success");
+                                    $("#toastbody").html("Data inserted successfully");
+                                    myModal.hide();
+                                    bsAlert.show();
+                                    if (dbAction == 'insert') addToTable(dbType, r);
+                                    if (dbAction == "edit") {
+                                        $("#toasthead").html("Success");
+                                        $("#toastbody").html("Data saved successfully");
+                                        myModal.hide();
+                                        bsAlert.show();
+                                        replaceRow(dbType, `orderitem_tr_${r.orderID}_${r.productID}`, r);
+
+                                    }
+
+                                }
+                            });
+                        }
+                    }
+                }
+
+
+            });
+            //Save click end
+            //Add more order item start
+            $(document).on("click", "button#addItemForm", () => {
+                $.ajax({
+                    type: 'GET',
+                    url: '/SPA/CreateItem',
+                    success: r => {
+
+                        $("div#items").append(r);
+
+                    }
+                })
+            });
+            //Add more order item end
+        });
+        //Function form data builder start
+        function createData(dbType, dbAction) {
+            if (dbType == "customer") {
+                var obj = {
+                    CustomerName: $("#CustomerName").val(),
+                    Address: $("#Address").val(),
+                    Email: $("#Email").val()
+                };
+                if (dbAction != 'insert') obj.CustomerID = $("#CustomerID").val();
+                return obj;
+            }
+
+            if (dbType == "product") {
+                var formData = new FormData();
+                if (dbAction != 'insert') formData.append("ProductID", $("#ProductID").val());
+                formData.append("ProductName", $("#ProductName").val());
+                formData.append("Price", $("#Price").val());
+                formData.append("Picture", document.getElementById("Picture").files[0]);
+                return formData;
+            };
+
+        }
+        //Function replace row start
+        function replaceRow(dbType, rowid, r) {
+            //console.log(r);
+            //console.log($(`#${rowid}`));
+            if (dbType == 'customer') {
+                $(`#${rowid}`).html(` <td>${r.customerName}</td>
+                <td>${r.address}</td>
+                <td>${r.email}</td>
+                <td>
+                     <button type="button" class="btn btn-primary btn-sm rounded-circle edit" data-db-type="customer"  data-db-action="edit" data-customer-id="${r.customerID}" data-controller-action="EditCustomer"><i class="bi bi-pencil"></i></button>
+                     <button type="button" class="btn btn-danger btn-sm rounded-circle del" data-db-type="customer"  data-db-action="delete" data-customer-id="${r.customerID}" data-controller-action="DeleteCustomer"><i class="bi bi-trash" ></i></button>
+                </td>`);
+            }
+            if (dbType == 'product') {
+                console.log($(`#${rowid}`));
+                $(`#${rowid}`).html(`<td style="width:50px"><img src="/Pictures/${r.picture}" style="width:40px" class="img-thumbnail rounded-circle" /></td>
+                <td>${r.productName}</td>
+                <td>${r.price.toFixed(2)}</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-sm rounded-circle edit" data-db-type="product" data-db-action="edit" data-product-id="${r.productID}" data-controller-action="EditProduct"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="btn btn-danger btn-sm rounded-circle del" data-db-type="product" data-db-action="delete" data-product-id="${r.productID}" data-controller-action="DeleteProduct"><i class="bi bi-trash"></i></button>
+                </td>`);
+            }
+            if (dbType == 'orderitem') {
+                console.log($(`#${rowid}`));
+                $(`#${rowid}`).html( `<td><img src="/Pictures/${r.product.picture}" class="rounded-circle" style="width:40px" /></td>
+
+                <td>${r.product.productName}</td>
+                <td>${r.product.price}</td>
+                <td>${r.quantity}</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-sm rounded-circle edit" data-db-type="orderitem" data-db-action="edit"  data-order-id="${r.OrderID}" data-product-id="${r.ProductID}" data-controller-action="EditOrderItem"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="btn btn-danger btn-sm rounded-circle del" data-db-type="orderitem" data-db-action="delete" data-order-id="${r.OrderID}" data-product-id="${r.ProductID}" data-controller-action="DeleteOrderItem"><i class="bi bi-trash"></i></button>
+                </td>`);
+            }
+        }
+        //Function replace row start
+        //Function form data builder end
+        //Function append to table start
+        function addToTable(dbType, r) {
+            //console.log(r.customerName);
+            //console.log(dbType);
+
+            if (dbType == "customer") {
+                $(`#${dbType}Table tbody`).append(
+                    `<tr id="customer_tr_${r.customerID}">
+                        <td>${r.customerName}</td>
+                        <td>${r.address}</td>
+                        <td>${r.email}</td>
+                        <td>
+                               <button type="button" class="btn btn-primary btn-sm rounded-circle edit" data-db-type="customer"  data-db-action="edit" data-customer-id="${r.customerID}" data-controller-action="EditCustomer"><i class="bi bi-pencil"></i></button>
+                               <button type="button" class="btn btn-danger btn-sm rounded-circle del" data-db-type="customer"  data-db-action="delete" data-customer-id="${r.customerID}" data-controller-action="DeleteCustomer"><i class="bi bi-trash" ></i></button>
+                        </td>
+                    </tr>`);
+            }
+            if (dbType == "product") {
+                $(`#${dbType}Table tbody`).append(
+                    `<tr id="product_tr_${r.productID}">
+                       <td style="width:50px"><img src="/Pictures/${r.picture}" style="width:40px" class="img-thumbnail rounded-circle" /></td>
+                       <td>${r.productName}</td>
+                       <td>${r.price}</td>
+                       <td>
+                             <button type="button" class="btn btn-primary btn-sm rounded-circle edit"  data-db-type="product"  data-db-action="edit" data-product-id="${r.productID}" data-controller-action="EditProduct"><i class="bi bi-pencil"></i></button>
+                             <button type="button" class="btn btn-danger btn-sm rounded-circle del" data-db-type="product" data-db-action="edit" data-product-id="${r.productID}" data-controller-action="DeleteProduct"><i class="bi bi-trash"></i></button>
+                       </td>
+                    </tr>`);
+            }
+            if (dbType == "order") {
+                $(`#${dbType}Table tbody`).append(
+                    `<tr id="product_tr_${r.orderID}">
+                        <td style="width:50px"><button type="button" class="btn btn-sm select" data-order-id="${r.orderID}" >Select</button</td>
+                                <td>${formatDate(new Date(r.orderDate))}</td>
+                        <td>${r.customer.customerName}</td>
+                        <td>${r.deliveryDate ? formatDate(new Date(r.deliveryDate)) : ''}</td>
+                        <td>${getStatusName(r.status)}</td>
+                        <td>
+                            <button type="button" class="btn btn-primary btn-sm rounded-circle edit" data-db-type="order" data-db-action="edit" data-order-id="${r.orderID}" data-controller-action="EditOrder"><i class="bi bi-pencil"></i></button>
+                            <button type="button" class="btn btn-danger btn-sm rounded-circle del" data-db-type="order" data-db-action="delete" data-order-id="${r.orderID}" data-controller-action="DeleteOrder"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>`);
+
+            }
+            if (dbType == "orderitem") {
+                $(`#${dbType}Table tbody`).append(
+                    `<tr id="orderitem_tr_${r.orderID}_${r.productID}">
+                        <td><img src="/Pictures/${r.product.picture}" class="rounded-circle" style="width:40px" /></td>
+                        <td>${r.product.productName}</td>
+                        <td>${r.product.price}</td>
+                        <td>${r.quantity}</td>
+                        <td>
+                             <button type="button" class="btn btn-primary btn-sm rounded-circle edit" data-db-type="orderitem" data-db-action="edit"  data-order-id="${r.OrderID}" data-product-id="${r.ProductID}" data-controller-action="EditOrderItem"><i class="bi bi-pencil"></i></button>
+                             <button type="button" class="btn btn-danger btn-sm rounded-circle del" data-db-type="orderitem" data-db-action="delete" data-order-id="${r.OrderID}" data-product-id="${r.ProductID}" data-controller-action="DeleteOrderItem"><i class="bi bi-trash"></i></button>
+                        </td>
+                     </tr>`);
+
+            }
+        }
+        //Function append to table end
+        //Function date format
+        function formatDate(d) {
+            return [
+                d.getFullYear(),
+                (d.getMonth() + 1).toString().padStart(2, '0'),
+                d.getDate().toString().padStart(2, '0')
+            ].join('-');
+        }
+        function getStatusName(status) {
+            //console.log(status);
+            if (status == '1') return 'Pending';
+            if (status == '2') return 'Delivered';
+            if (status == '3') return 'Cancelled';
+            return '';
+        }
+    </script>
+}

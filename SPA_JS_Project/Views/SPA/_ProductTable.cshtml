@@ -1,0 +1,26 @@
+﻿@model IEnumerable<Product>
+
+    <table class="table table-bordered" id="productTable">
+        <thead class="table-light">
+            <tr>
+                <th></th>
+                <th>Product Name</th>
+                <th>Price</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var p in Model)
+            {
+            <tr id="product_tr_@p.ProductID">
+                    <td style="width:50px"><img src="~/Pictures/@p.Picture" style="width:40px" class="img-thumbnail rounded-circle" /></td>
+                    <td>@p.ProductName</td>
+                    <td>@p.Price.ToString("0.00")</td>
+                    <td>
+                    <button type="button" class="btn btn-primary btn-sm rounded-circle edit" data-db-type="product" data-db-action="edit" data-product-id="@p.ProductID" data-controller-action="EditProduct"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="btn btn-danger btn-sm rounded-circle del" data-db-type="product" data-db-action="delete" data-product-id="@p.ProductID" data-controller-action="DeleteProduct"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>

@@ -1,0 +1,42 @@
+﻿@model Order
+
+
+<form id="f" name="f" data-db-type="order" data-db-action="insert" data-controller-action="CreateOrder">
+    <input type="hidden" asp-for="Status" value="@Status.Pending" />
+    <div class="form-group row mb-1">
+        <label asp-for="CustomerId" class="col-form-label col-form-label-sm col-2"></label>
+        <div class="col-4">
+            <select asp-for="CustomerId" class="form-select form-select-sm" asp-items="@(new SelectList(ViewData["Customers"] as IEnumerable<Customer>, "CustomerID", "CustomerName"))">
+                <option value="" selected>Select one</option>
+            </select>
+            <span asp-validation-for="CustomerId" class="text-danger"></span>
+        </div>
+    </div>
+    
+    <div class="form-group row mb-1">
+        <label asp-for="OrderDate" class="col-form-label col-form-label-sm col-2"></label>
+        <div class="col-4">
+            <input  type="text" asp-for="OrderDate" class="form-control form-control-sm date">
+            <span asp-validation-for="OrderDate" class="text-danger"></span>
+        </div>
+    </div>
+    <div class="form-group row mb-1">
+        <label asp-for="DeliveryDate" class="col-form-label col-form-label-sm col-2"></label>
+        <div class="col-4">
+            <input type="text" asp-for="DeliveryDate" class="form-control form-control-sm date" >
+            
+            <span asp-validation-for="DeliveryDate" class="text-danger"></span>
+        </div>
+    </div>
+    
+    <div id="items">
+        <div class="d-flex justify-content-between mb-1">
+            <h3>Items</h3>
+            <div><button type="button" class="btn btn-primary btn-sm" id="addItemForm"><i class="bi bi-plus"></i></button></div>
+        </div> 
+        @await Html.PartialAsync("_CreateItem", 
+        null,
+        new ViewDataDictionary(this.ViewData)
+         )
+    </div>
+</form>

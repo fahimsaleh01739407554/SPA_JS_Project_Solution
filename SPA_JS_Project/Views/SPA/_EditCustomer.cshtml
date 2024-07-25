@@ -1,0 +1,34 @@
+﻿@model Customer
+
+
+
+<form id="f" name="f" data-db-type="customer" data-db-action="edit" data-controller-action="EditCustomer">
+    <input type="hidden" asp-for="CustomerID" />
+    <div class="form-group row mb-1">
+        <label asp-for="CustomerName" class="col-form-label col-3"></label>
+        <div class="col-9">
+            <input asp-for="CustomerName" class="form-control" />
+            <span asp-validation-for="CustomerName" class="text-danger"></span>
+        </div>
+    </div>
+    <div class="form-group row mb-1">
+        <label asp-for="Address" class="control-label col-3"></label>
+        <div class="col-9">
+            <input asp-for="Address" class="form-control" />
+            <span asp-validation-for="Address" class="text-danger"></span>
+        </div>
+    </div>
+    <div class="form-group row mb-1">
+        <label asp-for="Email" class="control-label col-3"></label>
+        <div class="col-9">
+            <input asp-for="Email" class="form-control col-2" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+    </div>
+
+</form>
+
+
+
+
+
